@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 from .. import models, schemas, auth, database
 from pydantic import BaseModel
 import os
+import io
+import PIL.Image
 import google.generativeai as genai
 
 router = APIRouter(prefix="/api/scan", tags=["scan"])
@@ -35,6 +37,39 @@ def identify_medicine(request: ScanRequest, db: Session = Depends(database.get_d
     try:
         model = genai.GenerativeModel('gemini-flash-latest')
         response = model.generate_content(prompt)
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:-3].strip()
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:-3].strip()
+            
+        import json
+        data = json.loads(raw_text)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/image")
+async def identify_medicine_image(file: UploadFile = File(...), db: Session = Depends(database.get_db), current_user_id: int = Depends(auth.get_current_user_id)):
+    prompt = """
+    You are an AI assistant for an elderly care app. 
+    Analyze the provided image of a medicine box or label.
+    Identify the medicine and return ONLY a JSON with the following structure:
+    {
+        "name": "Medicine Name",
+        "use_case": "Primary use case (e.g. Pain killer, Blood pressure)",
+        "side_effects": "Main side effects in simple terms",
+        "dosage": "Typical dosage instructions if any, otherwise 'Consult doctor'"
+    }
+    Make it easy for an elderly person to understand. No medical jargon if possible.
+    """
+    
+    try:
+        contents = await file.read()
+        image = PIL.Image.open(io.BytesIO(contents))
+        
+        model = genai.GenerativeModel('gemini-flash-latest')
+        response = model.generate_content([prompt, image])
         raw_text = response.text.strip()
         if raw_text.startswith("```json"):
             raw_text = raw_text[7:-3].strip()

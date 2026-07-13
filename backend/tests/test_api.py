@@ -73,6 +73,33 @@ class TestMediscanAPI:
         TestMediscanAPI.profile_id = data["id"]
 
     @patch('backend.routers.scan.genai.GenerativeModel.generate_content')
+    def test_scan_medication_image(self, mock_generate_content):
+        # Create a dummy image
+        import io
+        from PIL import Image
+        
+        # Mock the Gemini API call
+        class MockResponse:
+            text = '{"name": "Aspirin", "use_case": "Pain relief", "dosage": "1 pill a day", "side_effects": "Nausea", "warnings": "Do not take on empty stomach"}'
+        mock_generate_content.return_value = MockResponse()
+        
+        img = Image.new('RGB', (100, 100), color = 'red')
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+        
+        response = client.post(
+            "/api/scan/image",
+            headers={"Authorization": f"Bearer {TestMediscanAPI.token}"},
+            files={"file": ("test.jpg", img_byte_arr, "image/jpeg")}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "name" in data
+        assert "use_case" in data
+
+    @patch('backend.routers.scan.genai.GenerativeModel.generate_content')
     def test_scan_medication(self, mock_generate_content):
         # Mock the Gemini API call so we don't actually hit the paid API during tests
         class MockResponse:

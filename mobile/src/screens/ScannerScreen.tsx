@@ -1,19 +1,48 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { launchCamera, launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import api from '../services/api';
 
 export default function ScannerScreen({ route, navigation }: any) {
   const { profileId, profileName } = route.params || { profileId: 1, profileName: 'Test Profile' };
-  const [ocrText, setOcrText] = useState('');
+  const [selectedImage, setSelectedImage] = useState<any>(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
 
+  const handleImagePicker = (type: 'camera' | 'gallery') => {
+    const options = { mediaType: 'photo' as const, includeBase64: false };
+    const callback = (response: ImagePickerResponse) => {
+      if (response.didCancel) return;
+      if (response.errorMessage) {
+        Alert.alert("Error", response.errorMessage);
+        return;
+      }
+      if (response.assets && response.assets.length > 0) {
+        setSelectedImage(response.assets[0]);
+      }
+    };
+    if (type === 'camera') launchCamera(options, callback);
+    else launchImageLibrary(options, callback);
+  };
+
   const handleAnalyze = async () => {
-    if (!ocrText.trim()) return;
+    if (!selectedImage) {
+      Alert.alert("Error", "Please select an image first.");
+      return;
+    }
     try {
       setScanning(true);
-      const res = await api.post('/scan/', { ocr_text: ocrText });
+      const formData = new FormData();
+      formData.append('file', {
+        uri: selectedImage.uri,
+        type: selectedImage.type || 'image/jpeg',
+        name: selectedImage.fileName || 'scan.jpg'
+      } as any);
+
+      const res = await api.post('/scan/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setScanResult(res.data);
     } catch (err: any) {
       Alert.alert("Error", err.response?.data?.detail || "Failed to analyze medication.");
@@ -50,14 +79,21 @@ export default function ScannerScreen({ route, navigation }: any) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Simulate OCR Text</Text>
-        <TextInput 
-          style={styles.input}
-          value={ocrText}
-          onChangeText={setOcrText}
-          placeholder="e.g. Aspirin 500mg"
-          placeholderTextColor={COLORS.textLight}
-        />
+        <Text style={styles.label}>Scan Medication</Text>
+        
+        {selectedImage && (
+           <Text style={{marginBottom: 10, color: COLORS.primary}}>Image selected: {selectedImage.fileName}</Text>
+        )}
+
+        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20}}>
+            <TouchableOpacity style={[styles.button, {flex: 1, marginRight: 10, backgroundColor: COLORS.secondary}]} onPress={() => handleImagePicker('camera')} disabled={scanning}>
+            <Text style={[styles.buttonText, {color: COLORS.primary}]}>Take Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, {flex: 1, marginLeft: 10, backgroundColor: COLORS.secondary}]} onPress={() => handleImagePicker('gallery')} disabled={scanning}>
+            <Text style={[styles.buttonText, {color: COLORS.primary}]}>Gallery</Text>
+            </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.button} onPress={handleAnalyze} disabled={scanning}>
           {scanning ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.buttonText}>Analyze Medication</Text>}
         </TouchableOpacity>
