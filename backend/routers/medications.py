@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
-from .. import models, auth, database
+import models, auth, database
 
 router = APIRouter(prefix="/api/medications", tags=["medications"])
 

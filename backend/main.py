@@ -3,9 +3,9 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 from fastapi import FastAPI
-from . import models
-from .database import engine
-from .routers import auth, profiles, scan, medications
+import models
+from database import engine
+from routers import auth, profiles, scan, medications
 
 models.Base.metadata.create_all(bind=engine)
 
