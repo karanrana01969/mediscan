@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
-import models, schemas, auth, database
+try:
+    from .. import models, schemas, auth, database
+except ImportError:
+    import models, schemas, auth, database
 from pydantic import BaseModel
 import os
 import io

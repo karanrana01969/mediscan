@@ -1,25 +1,37 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginScreen from './src/screens/LoginScreen';
-import SignupScreen from './src/screens/SignupScreen';
-import ProfilesScreen from './src/screens/ProfilesScreen';
-import ScannerScreen from './src/screens/ScannerScreen';
-import ScheduleScreen from './src/screens/ScheduleScreen';
-
-const Stack = createNativeStackNavigator();
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Alert } from 'react-native';
+import AppNavigator from './src/navigation/AppNavigator';
+import { notificationService } from './src/services/notificationService';
 
 function App(): React.JSX.Element {
+  React.useEffect(() => {
+    // Initialize FCM: request permission, get token, register with backend
+    notificationService.init();
+
+    // Listen for foreground notifications
+    const unsubscribe = notificationService.listenForeground((title, body) => {
+      Alert.alert(title, body);
+    });
+
+    // Handle notification tap when app was backgrounded
+    notificationService.onNotificationOpenedApp((data) => {
+      console.log('[FCM] Notification opened with data:', data);
+      // TODO: navigate to relevant screen based on data.screen
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Signup" component={SignupScreen} />
-        <Stack.Screen name="Dashboard" component={ProfilesScreen} />
-        <Stack.Screen name="Scanner" component={ScannerScreen} />
-        <Stack.Screen name="Schedule" component={ScheduleScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <AppNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

@@ -12,3 +12,5 @@ google-generativeai
 pillow
 pytest
 httpx
+firebase-admin
+apscheduler

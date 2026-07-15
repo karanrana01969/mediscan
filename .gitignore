@@ -16,3 +16,9 @@ mobile/.expo/
 
 # OS Files
 .DS_Store
+
+# Firebase & Secrets — NEVER COMMIT THESE
+secrets/
+mobile/android/app/google-services.json
+mobile/ios/GoogleService-Info.plist
+backend/firebase-service-account.json

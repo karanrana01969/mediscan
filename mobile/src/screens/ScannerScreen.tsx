@@ -1,26 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
-import { launchCamera, launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
+  ScrollView, Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import api from '../services/api';
 
 export default function ScannerScreen({ route, navigation }: any) {
-  const { profileId, profileName } = route.params || { profileId: 1, profileName: 'Test Profile' };
+  const { profileId, profileName } = route.params ?? {};
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
 
   const handleImagePicker = (type: 'camera' | 'gallery') => {
-    const options = { mediaType: 'photo' as const, includeBase64: false };
-    const callback = (response: ImagePickerResponse) => {
-      if (response.didCancel) return;
-      if (response.errorMessage) {
-        Alert.alert("Error", response.errorMessage);
-        return;
-      }
-      if (response.assets && response.assets.length > 0) {
-        setSelectedImage(response.assets[0]);
-      }
+    const options = { mediaType: 'photo' as const };
+    const callback = (response: any) => {
+      if (response.didCancel || response.errorMessage) return;
+      if (response.assets?.length > 0) setSelectedImage(response.assets[0]);
     };
     if (type === 'camera') launchCamera(options, callback);
     else launchImageLibrary(options, callback);
@@ -28,7 +26,7 @@ export default function ScannerScreen({ route, navigation }: any) {
 
   const handleAnalyze = async () => {
     if (!selectedImage) {
-      Alert.alert("Error", "Please select an image first.");
+      Alert.alert('Select Image', 'Please take a photo or pick from gallery first.');
       return;
     }
     try {
@@ -37,105 +35,180 @@ export default function ScannerScreen({ route, navigation }: any) {
       formData.append('file', {
         uri: selectedImage.uri,
         type: selectedImage.type || 'image/jpeg',
-        name: selectedImage.fileName || 'scan.jpg'
+        name: selectedImage.fileName || 'scan.jpg',
       } as any);
 
       const res = await api.post('/scan/image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setScanResult(res.data);
     } catch (err: any) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to analyze medication.");
+      Alert.alert('Error', err.response?.data?.detail ?? 'Failed to analyze image.');
     } finally {
       setScanning(false);
     }
   };
 
-  const saveMedication = async () => {
-    if (!scanResult) return;
-    try {
-      setScanning(true);
-      await api.post(`/medications/${profileId}`, {
-        name: scanResult.name,
-        use_case: scanResult.use_case,
-        dosage: scanResult.dosage,
-        side_effects: scanResult.side_effects,
-        total_pills: 30
-      });
-      Alert.alert("Success", "Medication saved!");
-      navigation.navigate('Schedule', { profileId, profileName });
-    } catch (err: any) {
-      Alert.alert("Error", "Failed to save medication.");
-    } finally {
-      setScanning(false);
-    }
+  const handleAddMedication = () => {
+    // Navigate to AddMedication with prefilled data from scan
+    navigation.navigate('AddMedication', {
+      profileId,
+      profileName,
+      prefill: scanResult,
+    });
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Scanner</Text>
-        <Text style={styles.subtitle}>Scanning for {profileName}</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.label}>Scan Medication</Text>
-        
-        {selectedImage && (
-           <Text style={{marginBottom: 10, color: COLORS.primary}}>Image selected: {selectedImage.fileName}</Text>
-        )}
-
-        <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20}}>
-            <TouchableOpacity style={[styles.button, {flex: 1, marginRight: 10, backgroundColor: COLORS.secondary}]} onPress={() => handleImagePicker('camera')} disabled={scanning}>
-            <Text style={[styles.buttonText, {color: COLORS.primary}]}>Take Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, {flex: 1, marginLeft: 10, backgroundColor: COLORS.secondary}]} onPress={() => handleImagePicker('gallery')} disabled={scanning}>
-            <Text style={[styles.buttonText, {color: COLORS.primary}]}>Gallery</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>📷 Scan Medication</Text>
+          <Text style={styles.subtitle}>For {profileName}</Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleAnalyze} disabled={scanning}>
-          {scanning ? <ActivityIndicator color={COLORS.surface} /> : <Text style={styles.buttonText}>Analyze Medication</Text>}
-        </TouchableOpacity>
-      </View>
+        {/* Camera Options */}
+        <View style={styles.card}>
+          <Text style={styles.label}>Take a photo of the medication box or label</Text>
 
-      {scanResult && (
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>{scanResult.name}</Text>
-          <Text style={styles.resultLabel}>Use Case:</Text>
-          <Text style={styles.resultText}>{scanResult.use_case}</Text>
-          
-          <Text style={styles.resultLabel}>Dosage:</Text>
-          <Text style={styles.resultText}>{scanResult.dosage}</Text>
-          
-          <Text style={styles.resultLabel}>Side Effects:</Text>
-          <Text style={styles.resultText}>{scanResult.side_effects}</Text>
-          
-          <Text style={styles.resultLabel}>Warnings:</Text>
-          <Text style={styles.resultText}>{scanResult.warnings}</Text>
+          {selectedImage && (
+            <View style={styles.selectedBadge}>
+              <Text style={styles.selectedText}>✅ Image selected: {selectedImage.fileName ?? 'photo'}</Text>
+            </View>
+          )}
 
-          <TouchableOpacity style={styles.saveButton} onPress={saveMedication} disabled={scanning}>
-            <Text style={styles.buttonText}>Save Medication</Text>
+          <View style={styles.photoRow}>
+            <TouchableOpacity
+              style={[styles.photoBtn, { marginRight: 8 }]}
+              onPress={() => handleImagePicker('camera')}
+              disabled={scanning}
+            >
+              <Text style={styles.photoBtnIcon}>📷</Text>
+              <Text style={styles.photoBtnText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.photoBtn}
+              onPress={() => handleImagePicker('gallery')}
+              disabled={scanning}
+            >
+              <Text style={styles.photoBtnIcon}>🖼️</Text>
+              <Text style={styles.photoBtnText}>Gallery</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.analyzeBtn, (!selectedImage || scanning) && styles.analyzeBtnDisabled]}
+            onPress={handleAnalyze}
+            disabled={!selectedImage || scanning}
+          >
+            {scanning
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.analyzeBtnText}>🔍 Analyze with AI</Text>
+            }
           </TouchableOpacity>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Also allow manual */}
+        <TouchableOpacity
+          style={styles.manualBtn}
+          onPress={() => navigation.navigate('AddMedication', { profileId, profileName })}
+        >
+          <Text style={styles.manualBtnText}>✏️ Add manually instead</Text>
+        </TouchableOpacity>
+
+        {/* Scan Result */}
+        {scanResult && (
+          <View style={styles.resultCard}>
+            <Text style={styles.resultTitle}>{scanResult.name}</Text>
+
+            <ResultRow label="Purpose" value={scanResult.use_case} />
+            <ResultRow label="Dosage" value={scanResult.dosage} />
+            <ResultRow label="Side Effects" value={scanResult.side_effects} />
+
+            <TouchableOpacity style={styles.saveBtn} onPress={handleAddMedication}>
+              <Text style={styles.saveBtnText}>Use This → Add to Schedule</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.rescanBtn}
+              onPress={() => { setScanResult(null); setSelectedImage(null); }}
+            >
+              <Text style={styles.rescanBtnText}>🔄 Scan Another</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function ResultRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <View style={styles.resultRow}>
+      <Text style={styles.resultLabel}>{label}</Text>
+      <Text style={styles.resultValue}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: COLORS.background, padding: SIZES.large, paddingTop: 60 },
+  safe: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { padding: SIZES.large },
   header: { marginBottom: SIZES.large },
-  title: { fontSize: SIZES.extraLarge, fontWeight: 'bold', color: COLORS.primary },
+  back: { marginBottom: SIZES.base },
+  backText: { color: COLORS.primary, fontSize: SIZES.font, fontWeight: '600' },
+  title: { fontSize: 26, fontWeight: '800', color: COLORS.text },
   subtitle: { fontSize: SIZES.font, color: COLORS.textLight, marginTop: 4 },
-  card: { backgroundColor: COLORS.surface, padding: SIZES.large, borderRadius: SIZES.radius, marginBottom: SIZES.large, ...SHADOWS.medium },
-  label: { fontSize: SIZES.small, fontWeight: '600', color: COLORS.text, marginBottom: SIZES.base, textTransform: 'uppercase' },
-  input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: SIZES.base, padding: SIZES.medium, marginBottom: SIZES.large, fontSize: SIZES.font, color: COLORS.text },
-  button: { backgroundColor: COLORS.primary, padding: SIZES.medium, borderRadius: SIZES.radius, alignItems: 'center' },
-  buttonText: { color: COLORS.surface, fontSize: SIZES.font, fontWeight: 'bold' },
-  resultCard: { backgroundColor: COLORS.secondary, padding: SIZES.large, borderRadius: SIZES.radius, ...SHADOWS.medium },
-  resultTitle: { fontSize: SIZES.large, fontWeight: 'bold', color: COLORS.text, marginBottom: SIZES.medium, textAlign: 'center' },
-  resultLabel: { fontSize: SIZES.small, fontWeight: 'bold', color: COLORS.text, marginTop: SIZES.base },
-  resultText: { fontSize: SIZES.font, color: COLORS.textLight, marginBottom: SIZES.base },
-  saveButton: { backgroundColor: COLORS.success, padding: SIZES.medium, borderRadius: SIZES.radius, alignItems: 'center', marginTop: SIZES.large },
+
+  card: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radius,
+    padding: SIZES.large, marginBottom: SIZES.medium, ...SHADOWS.medium,
+  },
+  label: { fontSize: SIZES.font, color: COLORS.text, fontWeight: '600', marginBottom: SIZES.medium },
+  selectedBadge: {
+    backgroundColor: '#E8F8EE', borderRadius: SIZES.base, padding: SIZES.base,
+    marginBottom: SIZES.medium, borderWidth: 1, borderColor: '#20BF55',
+  },
+  selectedText: { fontSize: SIZES.small, color: '#20BF55', fontWeight: '600' },
+  photoRow: { flexDirection: 'row', marginBottom: SIZES.medium },
+  photoBtn: {
+    flex: 1, backgroundColor: '#EFF3FF', borderRadius: SIZES.radius, padding: SIZES.large,
+    alignItems: 'center', borderWidth: 1.5, borderColor: COLORS.primary,
+  },
+  photoBtnIcon: { fontSize: 28, marginBottom: 4 },
+  photoBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: SIZES.small },
+  analyzeBtn: {
+    backgroundColor: COLORS.primary, padding: SIZES.medium + 2,
+    borderRadius: SIZES.radius, alignItems: 'center',
+  },
+  analyzeBtnDisabled: { backgroundColor: '#B0B8D1' },
+  analyzeBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.font },
+
+  manualBtn: { alignItems: 'center', paddingVertical: SIZES.medium },
+  manualBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: SIZES.font },
+
+  resultCard: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radius,
+    padding: SIZES.large, ...SHADOWS.medium, borderWidth: 2, borderColor: COLORS.primary,
+  },
+  resultTitle: {
+    fontSize: 22, fontWeight: '800', color: COLORS.text, textAlign: 'center',
+    marginBottom: SIZES.large,
+  },
+  resultRow: { marginBottom: SIZES.medium },
+  resultLabel: { fontSize: SIZES.small, fontWeight: '700', color: COLORS.textLight, textTransform: 'uppercase' },
+  resultValue: { fontSize: SIZES.font, color: COLORS.text, marginTop: 4 },
+  saveBtn: {
+    backgroundColor: COLORS.primary, padding: SIZES.medium + 2,
+    borderRadius: SIZES.radius, alignItems: 'center', marginTop: SIZES.large,
+  },
+  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.font },
+  rescanBtn: { alignItems: 'center', marginTop: SIZES.medium, padding: SIZES.base },
+  rescanBtnText: { color: COLORS.textLight, fontWeight: '600' },
 });
