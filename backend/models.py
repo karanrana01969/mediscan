@@ -18,6 +18,24 @@ class User(Base):
     notification_tokens = relationship("NotificationToken", back_populates="user", cascade="all, delete-orphan")
 
 
+class Prescription(Base):
+    """A doctor's prescription uploaded by the user for a specific profile."""
+    __tablename__ = "prescriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    profile_id = Column(Integer, ForeignKey("profiles.id"))
+    name = Column(String)                          # User-given name e.g. "Dr. Sharma - July 2026"
+    doctor_name = Column(String, nullable=True)
+    prescription_date = Column(Date, nullable=True)
+    image_path = Column(String, nullable=True)     # Local filesystem path to stored image/PDF
+    ai_extracted_json = Column(Text, nullable=True) # Full JSON string of AI extraction result
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    profile = relationship("Profile", back_populates="prescriptions")
+    medications = relationship("Medication", back_populates="prescription")
+
+
 class NotificationToken(Base):
     """Stores FCM device tokens per user for push notifications."""
     __tablename__ = "notification_tokens"
@@ -50,6 +68,7 @@ class Profile(Base):
     scan_history = relationship("ScanHistory", back_populates="profile", cascade="all, delete-orphan")
     vitals = relationship("Vitals", back_populates="profile", cascade="all, delete-orphan")
     appointments = relationship("Appointment", back_populates="profile", cascade="all, delete-orphan")
+    prescriptions = relationship("Prescription", back_populates="profile", cascade="all, delete-orphan")
 
 
 class Medication(Base):
@@ -57,6 +76,7 @@ class Medication(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     profile_id = Column(Integer, ForeignKey("profiles.id"))
+    prescription_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=True)  # optional link
     name = Column(String, index=True)
     use_case = Column(String, nullable=True)
     side_effects = Column(Text, nullable=True)
@@ -80,6 +100,7 @@ class Medication(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     profile = relationship("Profile", back_populates="medications")
+    prescription = relationship("Prescription", back_populates="medications")
     schedules = relationship("Schedule", back_populates="medication", cascade="all, delete-orphan")
     restock_logs = relationship("RestockLog", back_populates="medication", cascade="all, delete-orphan")
 

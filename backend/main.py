@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
-from routers import auth, profiles, scan, medications, notifications, history
+from routers import auth, profiles, scan, medications, notifications, history, prescriptions
 from scheduler import start_scheduler, stop_scheduler
 
 models.Base.metadata.create_all(bind=engine)
@@ -38,6 +38,7 @@ app.include_router(scan.router)
 app.include_router(medications.router)
 app.include_router(notifications.router)
 app.include_router(history.router)
+app.include_router(prescriptions.router)
 
 
 @app.get("/")

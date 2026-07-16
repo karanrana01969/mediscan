@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import api from '../services/api';
+import { prescriptionService, Prescription } from '../services/prescriptionService';
 
 interface MedicationForm {
   name: string;
@@ -23,7 +24,7 @@ const PILL_COLORS = ['White', 'Yellow', 'Pink', 'Blue', 'Green', 'Orange', 'Red'
 const PILL_SHAPES = ['Round', 'Oval', 'Capsule', 'Rectangle', 'Triangle'];
 
 export default function AddMedicationScreen({ route, navigation }: any) {
-  const { profileId, profileName, prefill } = route.params ?? {};
+  const { profileId, profileName, prefill, prescriptionPrefill } = route.params ?? {};
 
   const [form, setForm] = useState<MedicationForm>({
     name: prefill?.name ?? '',
@@ -38,6 +39,41 @@ export default function AddMedicationScreen({ route, navigation }: any) {
   });
   const [loading, setLoading] = useState(false);
   const [interactionWarning, setInteractionWarning] = useState<string | null>(null);
+  
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    prescriptionService.getAll(profileId, true).then(setPrescriptions).catch(console.warn);
+  }, [profileId]);
+
+  const handleSelectPrescription = (rx: Prescription) => {
+    if (selectedPrescriptionId === rx.id) {
+      setSelectedPrescriptionId(null);
+      return;
+    }
+    setSelectedPrescriptionId(rx.id);
+    
+    // Auto-fill from AI extracted json if we find a matching medicine name
+    if (rx.ai_extracted_json && form.name) {
+      try {
+        const parsed = JSON.parse(rx.ai_extracted_json);
+        const matches = parsed.medicines?.filter((m: any) => 
+          m.name.toLowerCase().includes(form.name.toLowerCase()) || 
+          form.name.toLowerCase().includes(m.name.toLowerCase())
+        );
+        if (matches && matches.length > 0) {
+          const m = matches[0];
+          setForm(f => ({
+            ...f,
+            dosage: f.dosage || m.dosage || '',
+            duration_days: f.duration_days || (m.duration_days ? m.duration_days.toString() : ''),
+            doctor_notes: f.doctor_notes || (rx.doctor_name ? `Prescribed by ${rx.doctor_name}` : ''),
+          }));
+        }
+      } catch (e) {}
+    }
+  };
 
   const update = (key: keyof MedicationForm) => (val: string) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -73,6 +109,7 @@ export default function AddMedicationScreen({ route, navigation }: any) {
         duration_days: form.duration_days ? parseInt(form.duration_days) : null,
         pill_color: form.pill_color || null,
         pill_shape: form.pill_shape || null,
+        prescription_id: selectedPrescriptionId || null,
       };
 
       const res = await api.post(`/medications/${profileId}`, payload);
@@ -84,6 +121,7 @@ export default function AddMedicationScreen({ route, navigation }: any) {
         medicationName: newMed.name,
         profileId,
         profileName,
+        prescriptionPrefill: prescriptionPrefill, // Pass down if coming from alerts
       });
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail ?? 'Failed to save medication.');
@@ -113,6 +151,29 @@ export default function AddMedicationScreen({ route, navigation }: any) {
             <View style={styles.warningCard}>
               <Text style={styles.warningIcon}>⚠️</Text>
               <Text style={styles.warningText}>{interactionWarning}</Text>
+            </View>
+          )}
+
+          {/* Link to Prescription */}
+          {prescriptions.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📋 Link Prescription (Optional)</Text>
+              <Text style={[styles.label, { textTransform: 'none', marginBottom: SIZES.medium }]}>
+                Link this medicine to a prescription to auto-fill details and schedules.
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                {prescriptions.map(rx => (
+                  <TouchableOpacity
+                    key={rx.id}
+                    style={[styles.chip, selectedPrescriptionId === rx.id && styles.chipSelected]}
+                    onPress={() => handleSelectPrescription(rx)}
+                  >
+                    <Text style={[styles.chipText, selectedPrescriptionId === rx.id && styles.chipTextSelected]}>
+                      {rx.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )}
 

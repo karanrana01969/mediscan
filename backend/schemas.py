@@ -30,6 +30,48 @@ class FCMTokenRegister(BaseModel):
 
 
 # ─────────────────────────────────────────────
+# Prescription
+# ─────────────────────────────────────────────
+
+class ExtractedMedicine(BaseModel):
+    """One medicine entry as extracted by AI from a prescription image."""
+    name: str
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None          # e.g. "Once daily at night"
+    duration_days: Optional[int] = None
+    suggested_times: Optional[List[str]] = None  # e.g. ["21:00"]
+    suggested_days: Optional[str] = None         # e.g. "Everyday"
+    suggested_label: Optional[str] = None        # e.g. "Night"
+
+class PrescriptionScanResult(BaseModel):
+    """Full AI extraction result from a prescription image."""
+    doctor_name: Optional[str] = None
+    prescription_date: Optional[str] = None
+    medicines: List[ExtractedMedicine] = []
+
+class PrescriptionCreate(BaseModel):
+    name: str                                    # User-given name
+    doctor_name: Optional[str] = None
+    prescription_date: Optional[str] = None      # ISO date string
+    ai_extracted_json: Optional[str] = None      # JSON string of PrescriptionScanResult
+
+class PrescriptionOut(BaseModel):
+    id: int
+    profile_id: int
+    name: str
+    doctor_name: Optional[str]
+    prescription_date: Optional[str]
+    image_path: Optional[str]
+    ai_extracted_json: Optional[str]
+    is_active: bool
+    created_at: datetime
+    medication_count: int = 0                    # how many meds linked to this prescription
+
+    class Config:
+        from_attributes = True
+
+
+# ─────────────────────────────────────────────
 # Profile
 # ─────────────────────────────────────────────
 
@@ -91,6 +133,7 @@ class MedicationCreate(BaseModel):
     pill_color: Optional[str] = None
     pill_shape: Optional[str] = None
     low_stock_threshold: int = 7
+    prescription_id: Optional[int] = None       # optional link to a prescription
 
 class MedicationOut(BaseModel):
     id: int
@@ -111,6 +154,8 @@ class MedicationOut(BaseModel):
     created_at: datetime
     schedules: List[ScheduleOut] = []
     days_remaining: Optional[int] = None   # computed field
+    prescription_id: Optional[int] = None
+    prescription_name: Optional[str] = None  # denormalized for display
 
     class Config:
         from_attributes = True

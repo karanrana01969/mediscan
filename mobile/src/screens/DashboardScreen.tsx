@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import api from '../services/api';
 import { storageService } from '../services/storageService';
+import { prescriptionService } from '../services/prescriptionService';
 
 interface TodayDose {
   schedule_id: number;
@@ -46,6 +47,7 @@ export default function DashboardScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [adherence, setAdherence] = useState<{ taken: number; total: number } | null>(null);
+  const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
     loadProfile();
@@ -67,12 +69,14 @@ export default function DashboardScreen({ route, navigation }: any) {
     const id = pid ?? profileId;
     if (!id) return;
     try {
-      const [todayRes, adherenceRes] = await Promise.all([
+      const [todayRes, adherenceRes, alertsRes] = await Promise.all([
         api.get(`/medications/today/${id}`),
         api.get(`/history/${id}/adherence?days=1`),
+        prescriptionService.getAlerts(id),
       ]);
       setDoses(todayRes.data);
       setAdherence({ taken: adherenceRes.data.taken, total: adherenceRes.data.total_doses });
+      setAlertCount(alertsRes.count);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {
@@ -138,6 +142,21 @@ export default function DashboardScreen({ route, navigation }: any) {
             <Text style={styles.scanButtonText}>＋ Add</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Prescription Alerts */}
+        {alertCount > 0 && (
+          <TouchableOpacity
+            style={styles.alertBanner}
+            onPress={() => navigation.navigate('PrescriptionAlerts', { profileId, profileName })}
+          >
+            <Text style={styles.alertIcon}>🔔</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>{alertCount} new medicine{alertCount > 1 ? 's' : ''} to schedule</Text>
+              <Text style={styles.alertSub}>From uploaded prescriptions</Text>
+            </View>
+            <Text style={styles.alertChevron}>›</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Adherence Card */}
         {doses.length > 0 && (
@@ -267,6 +286,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   scanButtonText: { color: '#fff', fontWeight: '700', fontSize: SIZES.font },
+
+  alertBanner: {
+    backgroundColor: '#FFF8E6', borderRadius: SIZES.radius, padding: SIZES.medium,
+    marginHorizontal: SIZES.large, marginBottom: SIZES.large,
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#FFCC00', ...SHADOWS.light,
+  },
+  alertIcon: { fontSize: 22, marginRight: SIZES.base },
+  alertTitle: { fontSize: SIZES.font, fontWeight: '700', color: '#7D5A00' },
+  alertSub: { fontSize: SIZES.small, color: '#A07800', marginTop: 2 },
+  alertChevron: { fontSize: 22, color: '#FFCC00', fontWeight: '700' },
 
   adherenceCard: {
     marginHorizontal: SIZES.large,

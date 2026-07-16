@@ -16,6 +16,29 @@ router = APIRouter(prefix="/api/scan", tags=["scan"])
 # Configured to use environment variable
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY"))
 
+PRESCRIPTION_PROMPT = """
+You are a medical AI assistant. Analyze this prescription image and extract ALL medicines prescribed.
+Return ONLY a JSON object with this exact structure:
+{
+  "doctor_name": "Dr. Name or null",
+  "prescription_date": "YYYY-MM-DD or null",
+  "medicines": [
+    {
+      "name": "Medicine name",
+      "dosage": "e.g. 650mg",
+      "frequency": "e.g. Once daily at night",
+      "duration_days": 5,
+      "suggested_times": ["21:00"],
+      "suggested_days": "Everyday",
+      "suggested_label": "Night"
+    }
+  ]
+}
+For suggested_times use 24h HH:MM. For suggested_label use one of: Morning, Afternoon, Evening, Night.
+For suggested_days use: Everyday, or comma-separated day abbreviations like Mon,Wed,Fri.
+If duration is not specified set duration_days to null.
+"""
+
 class ScanRequest(BaseModel):
     ocr_text: str
 
@@ -120,5 +143,46 @@ def check_interaction(profile_id: int, request: InteractionRequest, db: Session 
         import json
         data = json.loads(raw_text)
         return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/prescription")
+async def scan_prescription(
+    file: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+    current_user_id: int = Depends(auth.get_current_user_id)
+):
+    """
+    Accepts a prescription image (jpg/png) or PDF.
+    Returns structured JSON with doctor name, date, and list of all medicines.
+    """
+    try:
+        contents = await file.read()
+        content_type = file.content_type or ""
+        model = genai.GenerativeModel('gemini-flash-latest')
+
+        if "pdf" in content_type or (file.filename or "").lower().endswith(".pdf"):
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                tmp.write(contents)
+                tmp_path = tmp.name
+            uploaded = genai.upload_file(tmp_path, mime_type="application/pdf")
+            response = model.generate_content([PRESCRIPTION_PROMPT, uploaded])
+            import os as _os
+            _os.unlink(tmp_path)
+        else:
+            image = PIL.Image.open(io.BytesIO(contents))
+            response = model.generate_content([PRESCRIPTION_PROMPT, image])
+
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:-3].strip()
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:-3].strip()
+
+        import json
+        data = json.loads(raw_text)
+        return data
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

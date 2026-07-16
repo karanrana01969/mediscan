@@ -66,10 +66,16 @@ export default function MedicationsListScreen({ route, navigation }: any) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>Medications</Text>
           <Text style={styles.subtitle}>{profileName} · {meds.length} active</Text>
         </View>
+        <TouchableOpacity
+          style={styles.rxBtn}
+          onPress={() => navigation.navigate('Prescriptions', { profileId, profileName })}
+        >
+          <Text style={styles.rxBtnText}>📋 Rx</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => navigation.navigate('Scanner', { profileId, profileName })}
@@ -185,9 +191,14 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: SIZES.small, color: COLORS.textLight, marginTop: 2 },
   addBtn: {
     backgroundColor: COLORS.primary, paddingHorizontal: SIZES.medium,
-    paddingVertical: 10, borderRadius: 20,
+    paddingVertical: 10, borderRadius: 20, marginLeft: 8,
   },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.font },
+  rxBtn: {
+    backgroundColor: '#EFF3FF', paddingHorizontal: SIZES.medium,
+    paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: '#C7D2FE',
+  },
+  rxBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: SIZES.font },
   list: { paddingHorizontal: SIZES.large, paddingBottom: 32 },
   warningBanner: {
     backgroundColor: '#FFF8E6', borderRadius: SIZES.base, padding: SIZES.medium,

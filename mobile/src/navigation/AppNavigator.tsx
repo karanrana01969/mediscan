@@ -18,6 +18,9 @@ import SetScheduleScreen from '../screens/SetScheduleScreen';
 import MedicationDetailScreen from '../screens/MedicationDetailScreen';
 import MedicationsListScreen from '../screens/MedicationsListScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import PrescriptionsScreen from '../screens/PrescriptionsScreen';
+import AddPrescriptionScreen from '../screens/AddPrescriptionScreen';
+import PrescriptionAlertsScreen from '../screens/PrescriptionAlertsScreen';
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -97,6 +100,9 @@ function AppNavigatorStack() {
       <AppStack.Screen name="AddMedication" component={AddMedicationScreen} />
       <AppStack.Screen name="SetSchedule" component={SetScheduleScreen} />
       <AppStack.Screen name="MedicationDetail" component={MedicationDetailScreen} />
+      <AppStack.Screen name="Prescriptions" component={PrescriptionsScreen} />
+      <AppStack.Screen name="AddPrescription" component={AddPrescriptionScreen} />
+      <AppStack.Screen name="PrescriptionAlerts" component={PrescriptionAlertsScreen} />
     </AppStack.Navigator>
   );
 }
@@ -156,6 +162,9 @@ export default function AppNavigator() {
         <AppStack.Screen name="AddMedication" component={AddMedicationScreen} />
         <AppStack.Screen name="SetSchedule" component={SetScheduleScreen} />
         <AppStack.Screen name="MedicationDetail" component={MedicationDetailScreen} />
+        <AppStack.Screen name="Prescriptions" component={PrescriptionsScreen} />
+        <AppStack.Screen name="AddPrescription" component={AddPrescriptionScreen} />
+        <AppStack.Screen name="PrescriptionAlerts" component={PrescriptionAlertsScreen} />
       </AppStack.Navigator>
     );
   }

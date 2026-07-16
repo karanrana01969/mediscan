@@ -42,6 +42,34 @@ export default function SetScheduleScreen({ route, navigation }: any) {
   const [selectedDays, setSelectedDays] = useState<string[]>([...DAYS]);
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    const prefill = route.params?.prescriptionPrefill;
+    if (prefill) {
+      if (prefill.suggested_times && prefill.suggested_times.length > 0) {
+        setSlots(
+          prefill.suggested_times.map((time: string, i: number) => ({
+            id: String(i + 1),
+            time: time,
+            label: prefill.suggested_label || 'Morning',
+            notifyBefore: 15,
+          }))
+        );
+      }
+      if (prefill.suggested_days) {
+        if (prefill.suggested_days.toLowerCase() === 'everyday') {
+          setEveryday(true);
+        } else {
+          setEveryday(false);
+          const parts = prefill.suggested_days.split(',').map((d: string) => d.trim());
+          const matched = DAYS.filter(d => parts.some((p: string) => p.includes(d) || d.includes(p)));
+          if (matched.length > 0) {
+            setSelectedDays(matched);
+          }
+        }
+      }
+    }
+  }, [route.params?.prescriptionPrefill]);
+
   const applyPreset = (preset: typeof PRESETS[0]) => {
     setSlots(
       preset.slots.map((s, i) => ({
@@ -135,6 +163,14 @@ export default function SetScheduleScreen({ route, navigation }: any) {
           <Text style={styles.title}>Set Schedule</Text>
           <Text style={styles.subtitle}>{medicationName}</Text>
         </View>
+
+        {route.params?.prescriptionPrefill?.prescription_name && (
+          <View style={{ backgroundColor: '#E8F8EE', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+            <Text style={{ color: COLORS.success, fontWeight: '600' }}>
+              ✨ Pre-filled from {route.params.prescriptionPrefill.prescription_name}
+            </Text>
+          </View>
+        )}
 
         {/* Presets */}
         <View style={styles.section}>

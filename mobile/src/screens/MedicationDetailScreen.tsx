@@ -46,6 +46,7 @@ interface Medication {
   is_active: boolean;
   days_remaining: number | null;
   schedules: Schedule[];
+  prescription_name?: string | null;
 }
 
 export default function MedicationDetailScreen({ route, navigation }: any) {
@@ -213,6 +214,7 @@ export default function MedicationDetailScreen({ route, navigation }: any) {
             {med.dosage && <InfoRow icon="💊" label="Dosage" value={med.dosage} />}
             {med.side_effects && <InfoRow icon="⚠️" label="Side Effects" value={med.side_effects} />}
             {med.doctor_notes && <InfoRow icon="👨‍⚕️" label="Doctor Notes" value={med.doctor_notes} />}
+            {med.prescription_name && <InfoRow icon="📋" label="Linked Prescription" value={med.prescription_name} />}
             {med.duration_days && <InfoRow icon="📅" label="Treatment Duration" value={`${med.duration_days} days`} />}
 
             <Text style={styles.subTitle}>📋 Schedule</Text>
