@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
@@ -7,10 +8,21 @@ from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
 from routers import auth, profiles, scan, medications, notifications, history
+from scheduler import start_scheduler, stop_scheduler
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Mediscan API", version="2.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──
+    start_scheduler()
+    yield
+    # ── Shutdown ──
+    stop_scheduler()
+
+
+app = FastAPI(title="Mediscan API", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,3 +43,4 @@ app.include_router(history.router)
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Mediscan API v2", "status": "running"}
+

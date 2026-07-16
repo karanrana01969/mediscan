@@ -30,7 +30,7 @@ export const notificationService = {
       await storageService.saveFCMToken(token);
 
       // Register with backend
-      await api.post('/api/notifications/token', {
+      await api.post('/notifications/token', {
         token,
         platform: Platform.OS,
       });
@@ -48,7 +48,7 @@ export const notificationService = {
     try {
       const token = await storageService.getFCMToken();
       if (token) {
-        await api.delete(`/api/notifications/token?token=${token}`);
+        await api.delete(`/notifications/token?token=${token}`);
         await storageService.removeFCMToken();
       }
     } catch (err) {

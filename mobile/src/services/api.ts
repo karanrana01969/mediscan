@@ -3,7 +3,8 @@ import { storageService } from './storageService';
 
 // Replace with your machine IP when running on a physical device
 // export const BASE_URL = 'http://10.0.2.2:8000/api';  // Android emulator
-export const BASE_URL = 'http://192.168.0.199:8000/api';  // Physical device
+// export const BASE_URL = 'http://192.168.0.199:8000/api';  // Physical device (local WiFi)
+export const BASE_URL = 'https://struck-decrease-eject.ngrok-free.dev/api';  // ngrok tunnel
 
 const api = axios.create({
   baseURL: BASE_URL,

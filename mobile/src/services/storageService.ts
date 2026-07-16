@@ -56,6 +56,6 @@ export const storageService = {
 
   // ─── Full Logout Cleanup ─────────────────────────
   async clearAll(): Promise<void> {
-    await AsyncStorage.multiRemove(Object.values(KEYS));
+    await Promise.all(Object.values(KEYS).map(key => AsyncStorage.removeItem(key)));
   },
 };
